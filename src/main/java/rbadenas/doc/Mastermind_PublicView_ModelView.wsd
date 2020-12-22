@@ -1,0 +1,187 @@
+@startuml Mastermind_MVP_double_dispatch
+
+title Mastermind_MVP_double_dispatch
+
+
+!define MAIN LightSeaGreen
+
+skinparam Class {
+	BackgroundColor	White
+	BorderColor	MAIN
+	FontName	Segoe UI
+	FontSize	14
+    FontStyle bold
+    FontColor Black
+	HeaderBackgroundColor MAIN
+    ArrowColor MAIN
+    ArrowFontColor MAIN
+
+    AttributeFontSize 12
+}
+skinparam roundcorner 5
+skinparam stereotypeCBackgroundColor White
+skinparam stereotypeEBackgroundColor Red
+skinparam stereotypeABackgroundColor Aqua
+skinparam classAttributeIconSize 0
+
+Mastermind *--> controllers.Logic
+Mastermind *--> views.View
+
+Mastermind ^-- ConsoleMastermind
+
+ConsoleMastermind ..> views.console.ConsoleView
+
+views.View ^-- views.console.ConsoleView
+views.View ..^ controllers.ControllerVisitor
+
+
+    abstract class Mastermind {
+        #Mastermind()
+        #play() : void
+        #{abstract} createView(game : Game) : View
+    }
+
+    class ConsoleMastermind {
+        #createView(game : Game) : ConsoleView
+        +main(String[] args) : void
+    }
+
+
+namespace models{
+
+    class Game{
+        -{static} int NUM_ATTEMPTS = 10
+        +reset() : void
+        +addAttempt(proposed : String) : void
+        +getAttemptsCount() : int
+        +getAttempts() : List<Attempt>
+        +getHiddenSecret() : String
+        +isLastAttemptWinner() : bool
+        +isGameLost() : bool
+    }
+
+    class State{
+        +reset() : void
+        +next() : void
+        +isExit() : bool
+        +getValueState() : StateValue
+    }
+
+    enum StateValue{
+        INITIAL, IN_GAME, RESUME, EXIT
+    }
+}
+
+namespace controllers{
+    abstract class Controller{
+        +Controller(game, state)
+        +next() : void
+        +{abstract} accept(controller : ControllerVisitor)
+    }
+
+    interface ControllerVisitor{
+        +{abstract} visit(controller : StartController)
+        +{abstract} visit(controller : BoardController)
+        +{abstract} visit(controller : ResumeController)
+    }
+
+    class StartController{
+        +accept(controller : ControllerVisitor)
+    }
+
+    class BoardController{
+        +accept(controller : ControllerVisitor)
+        +getAttemptsCount() : int
+        +getAttempts() : List<Attempt>
+        +addAttempt(proposed : String) : void
+        +getHiddenSecret() : String
+        +isContinuePlaying() : bool
+        +isLastAttemptWinner() : bool
+        +isValid(proposed : String) : bool
+    }
+
+    class ResumeController{
+        +accept(controller : ControllerVisitor)
+        +reset() : void
+    }
+
+    class Logic{
+        +getController() : Controller
+        +isExit() : bool
+    }
+}
+
+namespace views{
+
+    abstract class ErrorView{
+        #ErrorView(error : Error)
+        #{abstract}show() : void
+    }
+
+    abstract class View{
+        +interact(controller : Controller) : void
+    }
+
+    enum Message{
+        START_TITTLE
+        ATTEMPT_CAPTION
+        COMBINATION_ENTER
+        WINNER
+        LOSER
+        RESUME
+    }
+
+    namespace console{
+        class ConsoleView{
+            +visit(controller : StartController) : void
+            +visit(controller : BoardController) : void
+            +visit(controller : ResumeController) : void
+        }
+
+        class ConsoleStartView{
+            +interact(controller : StartController) : void
+        }
+        class ConsoleBoardView{
+            +interact(controller : BoardController) : void
+        }
+        class ConsoleProposedCombinationView{
+            +interact(controller : BoardController) : String
+        }
+        class ConsoleResumeView{
+            +interact(controller : ResumeController) : bool
+        }
+    }
+}
+
+controllers.Logic *--> "n" controllers.Controller
+controllers.Logic *--> models.Game
+controllers.Logic *--> models.State
+
+controllers.Controller ^-- controllers.StartController
+controllers.Controller ^-- controllers.BoardController
+controllers.Controller ^-- controllers.ResumeController
+controllers.Controller ..> controllers.ControllerVisitor
+
+views.console.ConsoleStartView ..> controllers.StartController
+views.console.ConsoleBoardView ..> controllers.BoardController
+views.console.ConsoleResumeView ..> controllers.ResumeController
+
+
+
+
+
+
+
+views.console.ConsoleView *--> views.console.ConsoleStartView
+views.console.ConsoleView *--> views.console.ConsoleBoardView
+views.console.ConsoleView *--> views.console.ConsoleResumeView
+views.console.ConsoleBoardView *--> views.console.ConsoleProposedCombinationView
+views.console .down.> views
+
+
+
+
+
+models.State *--> models.StateValue
+
+@enduml
